@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Request Management</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #eef2ff; /* Tailwind indigo-50 */
+            min-height: 100vh;
+        }
+        .header-bg {
+            background-color: #4338ca; /* Deep Indigo */
+        }
+        .card-shadow {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(3px);
+        }
+        .form-input:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+        }
+        .login-card {
+            max-width: 480px;
+            width: 100%;
+        }
+        .demo-credentials {
+            background-color: #fef3c7; /* Amber 100 */
+            border: 1px solid #f59e0b; /* Amber 500 */
+            color: #b45309; /* Amber 800 */
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-green': '#10b981', /* Emerald */
+                        'danger-red': '#ef4444',     /* Red */
+                        'info-blue': '#3b82f6',      /* Blue */
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body onload="initializeApp()">
+
+    <!-- Notification/Status Bar (Custom) -->
+    <div id="statusMessage" class="hidden fixed top-5 right-5 p-4 rounded-xl shadow-xl max-w-sm z-50 border-l-4 opacity-0 transition-opacity duration-500" role="alert">
+        <div class="flex items-start">
+            <svg id="messageIcon" class="h-6 w-6 mr-3 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"></svg>
+            <div>
+                <p id="messageText" class="font-bold text-gray-900"></p>
+                <p id="messageSubText" class="text-sm text-gray-600"></p>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- --- LOGIN VIEW --- -->
+    <div id="loginView" class="fixed inset-0 z-50 flex items-center justify-center modal-overlay">
+        <div class="login-card bg-white rounded-xl shadow-2xl p-8 m-4">
+            <div class="text-center mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 mx-auto text-indigo-600 mb-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                </svg>
+                <h2 class="text-3xl font-bold text-indigo-700">Staff Portal Login</h2>
+                <p class="text-gray-500 mt-1">View and Manage Patient Requests</p>
+            </div>
+            <form onsubmit="handleLogin(event)" class="space-y-5">
+                <div>
+                    <label for="loginHospitalName" class="block text-sm font-medium text-gray-700 mb-1">Hospital/Unit Name</label>
+                    <input id="loginHospitalName" type="text" required placeholder="e.g., City General Hospital" class="form-input mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm" autofocus>
+                </div>
+                <div>
+                    <label for="loginPassword" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input id="loginPassword" type="password" required placeholder="Enter password" class="form-input mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm">
+                </div>
+                <div class="pt-4">
+                    <button type="submit" class="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg transition duration-150 shadow-lg flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10 0a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm6 3a1 1 0 00-1 1v4a1 1 0 102 0V7a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                        Log In
+                    </button>
+                </div>
+            </form>
+            <div id="demoCredentials" class="demo-credentials p-3 rounded-lg mt-5 text-sm">
+                <p class="font-bold mb-1">🚀 Demo Credentials:</p>
+                <p><strong>Hospital:</strong> <code>City General Hospital</code></p>
+                <p><strong>Password:</strong> <code>DEMO1234</code> (This is an Admin account)</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- --- DASHBOARD VIEW --- -->
+    <main id="dashboardView" class="container mx-auto px-4 py-10 hidden">
+
+        <!-- Header -->
+        <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 p-6 bg-white rounded-xl shadow-xl">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800">
+                    <span id="hospitalDisplay" class="text-indigo-600"></span>
+                    <span id="queueOrStaffTitle"> Request Queue</span>
+                </h1>
+                <p class="text-sm text-gray-500 mt-1">Logged in as: <strong id="staffNameDisplay"></strong> (<span id="staffRoleDisplay"></span>)</p>
+            </div>
+            <div class="flex space-x-4 items-center mt-4 sm:mt-0">
+                <!-- NEW STAFF BUTTON -->
+                <button onclick="toggleStaffManager()" id="manageStaffButton" class="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 transform hover:scale-105 shadow-md text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" /></svg>
+                    Login Staff 
+                </button>
+
+                <button onclick="mockNewRequest()" id="mockRequestButton" class="flex items-center bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 transform hover:scale-105 shadow-md text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                    Simulate New Request
+                </button>
+                <button onclick="logout()" class="flex items-center bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg text-sm transition duration-150 transform hover:scale-105 shadow-md">
+                    Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- STAFF MANAGER VIEW -->
+        <section id="staffManagerView" class="hidden my-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Hospital Staff List</h2>
+            <div class="bg-white p-6 rounded-xl shadow-xl space-y-4">
+                <h3 class="text-lg font-semibold text-indigo-700">Add New Staff Member</h3>
+                <form onsubmit="addStaffMember(event)" class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <input id="newStaffName" type="text" placeholder="Staff Name (e.g., Dr. Alice)" required class="md:col-span-1 form-input px-4 py-2 border border-gray-300 rounded-lg">
+                    <input id="newStaffPassword" type="password" placeholder="Password" required class="md:col-span-1 form-input px-4 py-2 border border-gray-300 rounded-lg">
+                    <select id="newStaffRole" required class="md:col-span-1 form-input px-4 py-2 border border-gray-300 rounded-lg">
+                        <option value="">Select Role</option>
+                        <option value="Doctor">Doctor</option>
+                        <option value="Nurse">Nurse</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                    <button type="submit" class="md:col-span-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-150 shadow-md">
+                        Login <!-- Changed from Add Staff to Login -->
+                    </button>
+                </form>
+                
+                <h3 class="text-lg font-semibold text-gray-700 border-t pt-4 mt-4">Current Staff</h3>
+                <div id="staffListContainer" class="mt-4 space-y-2">
+                    <!-- Staff members will be rendered here -->
+                </div>
+            </div>
+            <button onclick="toggleStaffManager(false)" class="mt-4 text-indigo-600 hover:text-indigo-800 font-semibold text-sm flex items-center">
+                 &larr; Back to Request Queue
+            </button>
+        </section>
+
+        <!-- Request Queue Container -->
+        <section id="requestQueue" class="space-y-6">
+            <!-- Dynamic request cards will be inserted here -->
+        </section>
+
+    </main>
+
+    <script>
+        // --- CONFIGURATION AND DATA STRUCTURES ---
+        const STAFF_STORAGE_KEY = 'staffCredentials';
+        const REQUEST_STORAGE_KEY = 'patientRequests';
+        
+        let staffRecords = [];
+        let patientRequests = [];
+        // Stores { hospitalName, staffName, role } of the currently logged-in user
+        let loggedInUser = null; 
+
+        const DEMO_CREDENTIALS = {
+            hospitalName: "City General Hospital",
+            staffName: "Dr. Admin User",
+            password: "DEMO1234",
+            role: "Admin" // Initial role for demo user
+        };
+
+        // --- 1. DATA MANAGEMENT (localStorage) ---
+
+        function loadRecords() {
+            try {
+                // Load Staff Records (and ensure Demo exists)
+                const storedStaff = localStorage.getItem(STAFF_STORAGE_KEY);
+                staffRecords = storedStaff ? JSON.parse(storedStaff) : [];
+                
+                // Ensure the demo user exists (check by staffName and hospitalName)
+                const demoExists = staffRecords.some(s => 
+                    s.hospitalName === DEMO_CREDENTIALS.hospitalName && 
+                    s.staffName === DEMO_CREDENTIALS.staffName
+                );
+
+                if (!demoExists) {
+                    staffRecords.push(DEMO_CREDENTIALS);
+                    saveStaffRecords();
+                }
+
+                // Load Patient Requests
+                const storedRequests = localStorage.getItem(REQUEST_STORAGE_KEY);
+                patientRequests = storedRequests ? JSON.parse(storedRequests) : [];
+
+            } catch (e) {
+                console.error("Error loading records from localStorage:", e);
+                staffRecords = [];
+                patientRequests = [];
+            }
+        }
+        
+        function saveStaffRecords() {
+             localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(staffRecords));
+        }
+
+        function savePatientRequests() {
+            localStorage.setItem(REQUEST_STORAGE_KEY, JSON.stringify(patientRequests));
+        }
+
+        // --- 2. AUTHENTICATION LOGIC ---
+
+        function handleLogin(event) {
+            event.preventDefault();
+            
+            const hospitalName = document.getElementById('loginHospitalName').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+
+            // Find staff member by hospitalName and password
+            const user = staffRecords.find(staff => 
+                staff.hospitalName.toLowerCase() === hospitalName.toLowerCase() && 
+                staff.password === password
+            );
+
+            if (user) {
+                // Store full user info on successful login
+                loggedInUser = { 
+                    hospitalName: user.hospitalName, 
+                    staffName: user.staffName,
+                    role: user.role 
+                };
+                document.getElementById('loginHospitalName').value = '';
+                document.getElementById('loginPassword').value = '';
+                renderApp();
+                showStatus(`Welcome, ${user.staffName}!`, `Logged in to ${user.hospitalName} as ${user.role}.`, 'success');
+            } else {
+                showStatus('Login Failed', 'Invalid hospital name or password.', 'error');
+            }
+        }
+        
+        function logout() {
+            loggedInUser = null;
+            renderApp();
+            showStatus('Logged Out', 'You have successfully logged out.', 'success');
+        }
+
+        function renderApp() {
+            const loginView = document.getElementById('loginView');
+            const dashboardView = document.getElementById('dashboardView');
+            
+            if (loggedInUser) {
+                loginView.classList.add('hidden');
+                dashboardView.classList.remove('hidden');
+                document.getElementById('hospitalDisplay').textContent = loggedInUser.hospitalName;
+                document.getElementById('staffNameDisplay').textContent = loggedInUser.staffName;
+                document.getElementById('staffRoleDisplay').textContent = loggedInUser.role;
+
+                // Only Admins can manage staff
+                const manageStaffButton = document.getElementById('manageStaffButton');
+                if (loggedInUser.role === 'Admin') {
+                    manageStaffButton.classList.remove('hidden');
+                } else {
+                    manageStaffButton.classList.add('hidden');
+                }
+                
+                // Default to showing the request queue
+                toggleStaffManager(false);
+
+            } else {
+                loginView.classList.remove('hidden');
+                dashboardView.classList.add('hidden');
+            }
+        }
+
+        // --- 3. STAFF MANAGEMENT LOGIC (EXISTING) ---
+
+        function toggleStaffManager(showStaffView = true) {
+            const requestQueue = document.getElementById('requestQueue');
+            const staffManagerView = document.getElementById('staffManagerView');
+            const queueOrStaffTitle = document.getElementById('queueOrStaffTitle');
+            
+            if (showStaffView) {
+                // Switch to Staff Manager View
+                requestQueue.classList.add('hidden');
+                staffManagerView.classList.remove('hidden');
+                queueOrStaffTitle.textContent = ' Staff Manager';
+                document.getElementById('manageStaffButton').textContent = 'Back to Queue';
+                document.getElementById('mockRequestButton').classList.add('hidden');
+                renderStaffList();
+            } else {
+                // Switch to Request Queue View
+                staffManagerView.classList.add('hidden');
+                requestQueue.classList.remove('hidden');
+                queueOrStaffTitle.textContent = ' Request Queue';
+                // FIX: Update button text to 'Login Staff' when viewing the queue
+                document.getElementById('manageStaffButton').textContent = 'Login Staff';
+                document.getElementById('mockRequestButton').classList.remove('hidden');
+                renderRequestQueue();
+            }
+        }
+
+        function addStaffMember(event) {
+            event.preventDefault();
+            
+            if (loggedInUser.role !== 'Admin') {
+                showStatus('Permission Denied', 'Only Admins can add new staff members.', 'error');
+                return;
+            }
+
+            const staffName = document.getElementById('newStaffName').value.trim();
+            const password = document.getElementById('newStaffPassword').value.trim();
+            const role = document.getElementById('newStaffRole').value;
+
+            // Simple validation: check for existing user with same name (ignoring case)
+            const exists = staffRecords.some(staff => 
+                staff.hospitalName === loggedInUser.hospitalName && 
+                staff.staffName.toLowerCase() === staffName.toLowerCase()
+            );
+
+            if (exists) {
+                showStatus('Creation Failed', `Staff member ${staffName} already exists at this hospital.`, 'error');
+                return;
+            }
+
+            const newStaff = {
+                hospitalName: loggedInUser.hospitalName,
+                staffName: staffName,
+                password: password,
+                role: role
+            };
+            
+            staffRecords.push(newStaff);
+            saveStaffRecords();
+            renderStaffList();
+            
+            // Clear form
+            document.getElementById('newStaffName').value = '';
+            document.getElementById('newStaffPassword').value = '';
+            document.getElementById('newStaffRole').value = '';
+
+            showStatus('Staff Added', `${staffName} (${role}) added successfully.`, 'success');
+        }
+
+        function renderStaffList() {
+            const staffListContainer = document.getElementById('staffListContainer');
+            if (!loggedInUser) return;
+
+            const hospitalStaff = staffRecords.filter(staff => 
+                staff.hospitalName === loggedInUser.hospitalName
+            ).sort((a, b) => a.staffName.localeCompare(b.staffName));
+
+            if (hospitalStaff.length === 0) {
+                staffListContainer.innerHTML = '<p class="text-gray-500 italic">No staff members found for this hospital.</p>';
+                return;
+            }
+
+            staffListContainer.innerHTML = hospitalStaff.map(staff => `
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 border-b border-gray-100 last:border-b-0">
+                    <div class="flex items-center space-x-3">
+                         <div class="text-lg font-bold ${staff.role === 'Admin' ? 'text-indigo-600' : 'text-gray-700'}">${staff.staffName}</div>
+                         <span class="text-xs font-medium px-2 py-0.5 rounded-full ${staff.role === 'Admin' ? 'bg-indigo-100 text-indigo-700' : staff.role === 'Doctor' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700'}">${staff.role}</span>
+                    </div>
+                    <div class="text-sm text-gray-500 mt-1 sm:mt-0">Hospital: ${staff.hospitalName}</div>
+                </div>
+            `).join('');
+        }
+
+
+        // --- 4. PATIENT REQUEST MANAGEMENT (UPDATED LOGIC) ---
+
+        function mockNewRequest() {
+            if (!loggedInUser) return;
+            
+            const names = ["Aisha B.", "Ravi K.", "Priya S.", "John D.", "Fatima A.", "Gopal V."];
+            // 80% chance for the request to go to the logged-in hospital
+            const hospitals = Math.random() < 0.8 ? [loggedInUser.hospitalName] : ["Apex General Hospital", "Mercy Clinic"];
+            // Added more reasons that might indicate a bed is needed
+            const reasons = ["Follow-up on recent bloodwork and medication review.", "Severe headache and vomiting over 48 hours.", "Injury requiring stitches and X-ray.", "Routine check-up for high blood pressure.", "Severe flu-like symptoms, needs observation.", "Post-operative check and potential admission."];
+
+            const newRequest = {
+                id: 'REQ-' + Date.now(),
+                patientName: names[Math.floor(Math.random() * names.length)],
+                hospitalName: hospitals[Math.floor(Math.random() * hospitals.length)],
+                reason: reasons[Math.floor(Math.random() * reasons.length)],
+                date: new Date().toLocaleDateString('en-US'),
+                timeSlot: `${Math.floor(Math.random() * 10) + 8}:00 AM - 9:00 AM`,
+                status: 'Pending',
+                // NEW: Bed Required field (50/50 chance for true/false)
+                bedRequired: Math.random() < 0.5 
+            };
+            
+            patientRequests.push(newRequest);
+            savePatientRequests();
+            renderRequestQueue();
+            
+            if (newRequest.hospitalName === loggedInUser.hospitalName) {
+                showStatus('New Request Received!', `Request for ${newRequest.patientName} is now in your queue.`, 'info');
+            } else {
+                 showStatus('Simulated Request', `A request was sent to ${newRequest.hospitalName}.`, 'info');
+            }
+        }
+
+        function handleDecision(requestId, decision) {
+            if (!loggedInUser) return;
+            
+            const requestIndex = patientRequests.findIndex(r => r.id === requestId);
+            if (requestIndex === -1) return;
+
+            const request = patientRequests[requestIndex];
+
+            // Update status and save
+            request.status = decision === 'accept' ? 'Accepted' : 'Rejected';
+            savePatientRequests();
+
+            // Notify user
+            const notificationTitle = decision === 'accept' ? 'Request Accepted' : 'Request Rejected';
+            const notificationText = `${request.patientName}'s request was processed.`;
+            showStatus(notificationTitle, notificationText, decision === 'accept' ? 'success' : 'error');
+
+            // Re-render the queue (which automatically filters out processed items)
+            renderRequestQueue();
+        }
+
+        function renderRequestQueue() {
+            const queueContainer = document.getElementById('requestQueue');
+            queueContainer.innerHTML = ''; // Clear existing queue
+
+            const hospitalFilter = loggedInUser ? loggedInUser.hospitalName.toLowerCase() : '';
+            
+            // Filter: Only show pending requests for the logged-in hospital
+            const pendingRequests = patientRequests.filter(r => 
+                r.status === 'Pending' && r.hospitalName.toLowerCase() === hospitalFilter
+            ).sort((a, b) => new Date(a.id.split('-')[1]) - new Date(b.id.split('-')[1])); // Sort by oldest first
+
+            if (pendingRequests.length === 0) {
+                queueContainer.innerHTML = `
+                    <div class="bg-white p-12 rounded-xl shadow-xl text-center text-gray-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-indigo-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m-7-14h8a2 2 0 012 2v14a2 2 0 01-2 2h-8a2 2 0 01-2-2V4a2 2 0 012-2z" />
+                        </svg>
+                        <p class="mt-3 text-xl font-medium text-gray-700">Queue Empty</p>
+                        <p class="text-sm">There are no pending requests for ${loggedInUser.hospitalName}.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            pendingRequests.forEach(request => {
+                
+                // --- NEW LOGIC FOR BED REQUIREMENT DISPLAY ---
+                const bedStatus = request.bedRequired ? 'Yes (Urgent)' : 'No (Outpatient)';
+                const bedBg = request.bedRequired ? 'bg-red-100 text-red-700 font-extrabold' : 'bg-green-100 text-green-700 font-semibold';
+                const bedIcon = request.bedRequired ? 
+                    // Icon for Bed
+                    `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 6a1 1 0 011-1h10a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1V6zM15 14H5v2h10v-2zM4 17a1 1 0 000 2h12a1 1 0 100-2H4z"/></svg>` :
+                    // Icon for Checkmark (No Bed)
+                    `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>`;
+                // --------------------------------------------------
+
+                const cardHtml = `
+                    <div id="requestCard-${request.id}" class="bg-white p-6 md:p-8 rounded-xl shadow-xl border border-gray-100 transition-all duration-300">
+                        
+                        <!-- Header and Patient Info -->
+                        <div class="flex items-center space-x-4 mb-6 pb-4 border-b border-gray-100">
+                            <div class="flex-shrink-0">
+                                <div class="h-12 w-12 flex items-center justify-center bg-info-blue/10 text-info-blue rounded-full font-bold text-xl">
+                                    ${request.patientName.split(' ').map(n => n[0]).join('')}
+                                </div>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-semibold text-gray-900">Patient: ${request.patientName}</h2>
+                                <p class="text-sm text-gray-500">Request ID: ${request.id}</p>
+                            </div>
+                        </div>
+
+                        <!-- Request Details -->
+                        <div class="space-y-4 mb-8">
+                            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <span class="text-gray-500 font-medium">Requested Date:</span>
+                                <span class="text-gray-700 font-semibold">${request.date}</span>
+                            </div>
+                            <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                <span class="text-gray-500 font-medium">Time Slot:</span>
+                                <span class="text-gray-700 font-semibold">${request.timeSlot}</span>
+                            </div>
+
+                            <!-- Bed Requirement Status (NEW ELEMENT) -->
+                            <div class="flex justify-between items-center p-3 rounded-lg ${bedBg}">
+                                <span class="text-gray-800 font-medium flex items-center">
+                                    ${bedIcon}
+                                    Patient Bed Required:
+                                </span>
+                                <span class="font-bold">${bedStatus}</span>
+                            </div>
+                            <!-- End NEW ELEMENT -->
+                            
+                            <div class="p-3 bg-gray-50 rounded-lg">
+                                <p class="text-gray-500 font-medium mb-1">Reason for Visit:</p>
+                                <p class="text-gray-700 italic">${request.reason}</p>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <button 
+                                onclick="handleDecision('${request.id}', 'accept')" 
+                                class="flex-1 px-6 py-3 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 
+                                       bg-primary-green hover:bg-primary-green/90 focus:outline-none focus:ring-4 focus:ring-primary-green/50">
+                                Accept Request
+                            </button>
+
+                            <button 
+                                onclick="handleDecision('${request.id}', 'reject')" 
+                                class="flex-1 px-6 py-3 font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 
+                                       border border-danger-red text-danger-red hover:bg-danger-red/10 focus:outline-none focus:ring-4 focus:ring-danger-red/30">
+                                Reject Request
+                            </button>
+                        </div>
+                    </div>
+                `;
+                queueContainer.innerHTML += cardHtml;
+            });
+        }
+        
+        // --- 5. MESSAGE BOX UTILITY (EXISTING) ---
+        
+        function showStatus(title, subtext, type = 'success') {
+            const messageBox = document.getElementById('statusMessage');
+            const messageText = document.getElementById('messageText');
+            const messageSubText = document.getElementById('messageSubText');
+            const messageIcon = document.getElementById('messageIcon');
+
+            messageText.textContent = title;
+            messageSubText.textContent = subtext;
+
+            messageBox.className = 'fixed top-5 right-5 p-4 rounded-xl shadow-xl max-w-sm z-50 border-l-4 opacity-0 transition-opacity duration-500 flex items-start';
+            messageIcon.innerHTML = ''; // Clear icon content
+
+            let bgColor = '';
+            let borderColor = '';
+            let iconPath = '';
+
+            if (type === 'success') {
+                bgColor = 'bg-primary-green';
+                borderColor = 'border-primary-green';
+                iconPath = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />';
+            } else if (type === 'error') {
+                bgColor = 'bg-danger-red';
+                borderColor = 'border-danger-red';
+                iconPath = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />';
+            } else { // info
+                bgColor = 'bg-info-blue';
+                borderColor = 'border-info-blue';
+                iconPath = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />';
+            }
+            
+            messageBox.classList.add(borderColor, 'bg-white', 'text-gray-900');
+            messageIcon.innerHTML = `<svg class="h-6 w-6 mr-3 flex-shrink-0" style="color: ${bgColor}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">${iconPath}</svg>`;
+
+
+            messageBox.classList.remove('hidden');
+            setTimeout(() => {
+                messageBox.classList.remove('opacity-0');
+            }, 50);
+
+            setTimeout(() => {
+                messageBox.classList.add('opacity-0');
+            }, 4500); 
+
+            setTimeout(() => {
+                messageBox.classList.add('hidden');
+            }, 5000);
+        }
+
+        // --- 6. INITIALIZATION (EXISTING) ---
+
+        function initializeApp() {
+            loadRecords(); // Loads data and ensures the demo user exists
+            renderApp();   // Renders either login or dashboard
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Karnataka Govt Hospital Portal (1536 Hospitals)</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* Tailwind gray-50 */
+        }
+        .header-bg {
+            background-color: #0d47a1; /* Deep Blue, similar to government color schemes */
+        }
+        .text-accent {
+            color: #ffb300; /* Amber/Orange for accents */
+        }
+        .card-shadow {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transition: transform 0.2s;
+        }
+        .card-shadow:hover {
+            transform: translateY(-2px);
+        }
+        /* Style for the modal overlay */
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(2px);
+        }
+        .form-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header class="header-bg text-white shadow-lg sticky top-0 z-10">
+        <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between">
+            <h1 class="text-2xl md:text-3xl font-bold">
+                <span class="text-accent">GOVT</span> Hospital & Hospitality
+            </h1>
+            <p class="text-sm mt-1 md:mt-0 opacity-80">Government of Karnataka Public Health Services</p>
+        </div>
+    </header>
+
+    <!-- Main Content and Controls -->
+    <main class="container mx-auto px-4 py-8">
+
+        <!-- Control Panel -->
+        <div class="bg-white p-6 mb-8 rounded-xl shadow-md border-t-4 border-blue-500">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Search & Filter Hospitals</h2>
+            <div class="flex flex-col sm:flex-row gap-4 items-center">
+                <div class="w-full sm:w-1/3">
+                    <label for="districtFilter" class="block text-sm font-medium text-gray-700 mb-1">Select District:</label>
+                    <select id="districtFilter" onchange="renderHospitals()" class="w-full p-2.5 border border-gray-300 bg-white rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="All">All Districts</option>
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="w-full sm:w-2/3">
+                    <div class="text-sm font-medium text-gray-500 sm:text-right pt-2 sm:pt-6">
+                        <span id="hospitalCount" class="font-bold text-gray-700">0</span> Hospitals Listed
+                    </div>
+                    <p class="text-xs text-right text-gray-400">Database includes major, taluk, and community health centers.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hospital List Section -->
+        <section id="hospitalList" class="space-y-6">
+            <!-- Hospital Cards will be injected here by JavaScript -->
+            <div class="text-center p-12 bg-white rounded-xl text-gray-500" id="initialMessage">
+                <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-12 w-12 text-blue-400 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16M4 4h16V4M4 20h16V20M8 8V4M16 8V4M8 16V20M16 16V20" />
+                </svg>
+                <p class="mt-3 text-lg font-medium">Loading 1500+ hospital records...</p>
+                <p class="text-sm">Please wait while the comprehensive Karnataka health dataset is generated and displayed.</p>
+            </div>
+        </section>
+
+    </main>
+    
+    <!-- Booking Modal (Hidden by default) -->
+    <div id="bookingModal" class="hidden fixed inset-0 z-50 flex items-center justify-center modal-overlay transition-opacity duration-300" onclick="closeBookingModal()">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg m-4" onclick="event.stopPropagation()">
+            <!-- Modal Header -->
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+                <h3 class="text-2xl font-bold text-gray-900">Request Bed/Service</h3>
+                <button onclick="closeBookingModal()" class="text-gray-400 hover:text-gray-600 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Modal Body (Form) -->
+            <div class="p-6">
+                <p class="text-gray-700 mb-4">You are requesting services for: <strong id="modalHospitalName" class="text-blue-700"></strong>.</p>
+                <p class="text-sm text-red-500 mb-4">Note: This is an enquiry request and not a confirmed booking. Hospital staff will contact you shortly.</p>
+                
+                <form onsubmit="handleBookingRequest(event)" class="space-y-4">
+                    <div>
+                        <label for="patientName" class="block text-sm font-medium text-gray-700">Patient Name</label>
+                        <input id="patientName" type="text" required class="form-input mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                    </div>
+                    <div>
+                        <label for="contactNumber" class="block text-sm font-medium text-gray-700">Contact Number</label>
+                        <input id="contactNumber" type="tel" pattern="\d{10}" maxlength="10" required class="form-input mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm">
+                    </div>
+                    <div>
+                        <label for="requiredService" class="block text-sm font-medium text-gray-700">Required Service/Bed Type</label>
+                        <select id="requiredService" required class="form-input mt-1 block w-full p-2.5 border border-gray-300 rounded-lg shadow-sm">
+                            <option value="">Select Bed/Service</option>
+                            <option value="ICU Bed">ICU Bed</option>
+                            <option value="General Ward Bed">General Ward Bed</option>
+                            <option value="Maternity Services">Maternity Services</option>
+                            <option value="General Consultation">General Consultation</option>
+                            <option value="Accommodation for Attendant">Accommodation for Attendant</option>
+                        </select>
+                    </div>
+                    <div class="pt-2">
+                        <button type="submit" class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition duration-150 shadow-md">
+                            Submit Request
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Box (Custom notification system) -->
+    <div id="messageBox" class="hidden fixed top-5 right-5 bg-white p-4 rounded-lg shadow-xl max-w-sm z-50 border-l-4 transition-all duration-300 ease-out" role="alert">
+        <div class="flex items-start">
+            <!-- Icon placeholder -->
+            <div class="py-1"><svg id="messageIcon" class="h-6 w-6 mr-4 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"></svg></div>
+            <div>
+                <p id="messageText" class="font-bold text-gray-900"></p>
+                <p id="messageSubText" class="text-sm text-gray-600"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-12 py-6 bg-gray-200 text-center text-gray-600 text-sm">
+        <p>This dataset is **simulated** to meet the 1500+ requirement for demonstration purposes.</p>
+        <p class="mt-1">&copy; 2024 Govt Hospital Hospitality Portal (Simulated Data)</p>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- 1. SIMULATED DATA GENERATION LOGIC ---
+
+        const DISTRICTS = [
+            'Bengaluru Urban', 'Bengaluru Rural', 'Bagalkot', 'Ballari', 'Belagavi', 'Bidar', 'Chamarajanagar', 
+            'Chikkaballapur', 'Chikkamagaluru', 'Chitradurga', 'Dakshina Kannada', 'Davanagere', 'Dharwad', 
+            'Gadag', 'Hassan', 'Haveri', 'Kalaburagi', 'Kodagu', 'Kolar', 'Koppal', 'Mandya', 'Mysuru', 
+            'Raichur', 'Ramanagara', 'Shivamogga', 'Tumakuru', 'Udupi', 'Uttara Kannada', 'Vijayapura', 'Yadgir'
+        ];
+
+        const TALUK_NAMES = ['Anekal', 'Magadi', 'Tiptur', 'Malur', 'Gokak', 'Sindagi', 'Honavar', 'Sringeri', 'Afzalpur', 'Nanjangud', 'Sagar', 'Khanapur', 'Chintamani', 'Hukkeri', 'Gubbi', 'Sullia', 'Sedam', 'Aland', 'Manvi', 'Lingsugur', 'Molakalmuru', 'Byadagi', 'Sankeshwar', 'Koppal', 'Kanakapura', 'Periyapatna', 'Aurad', 'Mudigere'];
+        
+        const BUILDING_TYPES = ['Block', 'Building', 'Complex', 'Centre', 'Campus'];
+
+        /**
+         * Generates a simulated address based on hospital context, explicitly including the hospital name.
+         */
+        function generateAddress(district, name, type) {
+            const randomNum = Math.floor(Math.random() * 900) + 100;
+            const city = name.includes('Taluk') ? name.split(', ')[1] : district.replace(' Urban', '').replace(' Rural', '');
+            const pin = '5' + Math.floor(Math.random() * 9) + Math.floor(Math.random() * 9) + '00' + Math.floor(Math.random() * 9);
+            
+            let street = '';
+            if (type.includes('Primary Care Center')) {
+                // For smaller centers, use the name as a landmark reference
+                street = `Near Gram Panchayat Office, ${name.split(', ')[1] || 'Main Village Rd'}`;
+            } else {
+                // For larger hospitals, explicitly reference the name as the main street location
+                street = `Opposite Main Entrance of ${name}, ${BUILDING_TYPES[Math.floor(Math.random() * BUILDING_TYPES.length)]}`;
+            }
+            
+            return `#${randomNum}, ${street}, ${city} - ${pin}, ${district}, Karnataka.`;
+        }
+
+        /**
+         * Generates a large, simulated dataset of over 1500 government hospitals.
+         */
+        function generateSimulatedData() {
+            let data = [];
+            
+            // 1. Detailed Bengaluru Urban Hospitals (7 entries)
+            const detailedBengaluru = [
+                { district: "Bengaluru Urban", name: "Victoria Hospital", totalBeds: 1200, availableBeds: 180, icuBeds: 75, generalBeds: 1000, accommodation: "On-site lodging block for parents/attendants (nominal fee). Subsidized canteen available.", facilities: "24/7 Trauma Care, Super Specialty Block, MRI/CT Scanning, Central Blood Bank, Telemedicine Unit.", type: "Medical College Hospital" },
+                { district: "Bengaluru Urban", name: "Bowring and Lady Curzon Hospital", totalBeds: 750, availableBeds: 55, icuBeds: 40, generalBeds: 600, accommodation: "Nearby government-affiliated Dharamshala available for long-term stay.", facilities: "Maternity & Child Health, Dental Unit, Modern Pathology Lab.", type: "General Hospital" },
+                { district: "Bengaluru Urban", name: "Vani Vilas Hospital", totalBeds: 600, availableBeds: 85, icuBeds: 30, generalBeds: 500, accommodation: "Dedicated waiting hall for pediatric parents.", facilities: "Exclusive Maternity and Pediatric Care, Level-III NICU, Child Health Programs.", type: "Maternity/Pediatric Hospital" },
+                { district: "Bengaluru Urban", name: "KC General Hospital", totalBeds: 450, availableBeds: 70, icuBeds: 20, generalBeds: 400, accommodation: "Basic shared dormitory facility for out-of-town patient relatives.", facilities: "Multi-Specialty Services, General Surgery, Diagnostics, Regional Blood Bank.", type: "General Hospital" },
+                { district: "Bengaluru Urban", name: "Sri Jayadeva Inst. of Cardiovascular Sci.", totalBeds: 1000, availableBeds: 120, icuBeds: 150, generalBeds: 750, accommodation: "Attendant lodging available with advanced booking.", facilities: "Advanced Cardiology & Cardiothoracic Surgery, Interventional Radiology, Cath Lab.", type: "Specialty Hospital" },
+                { district: "Bengaluru Urban", name: "Indira Gandhi Inst. of Child Health", totalBeds: 500, availableBeds: 65, icuBeds: 40, generalBeds: 400, accommodation: "Dedicated child and parent waiting areas and support services.", facilities: "Pediatric Super-Specialty, PICU/NICU, Child Surgery, Advanced Pediatric Diagnostics.", type: "Specialty Hospital" },
+                { district: "Bengaluru Urban", name: "Minto Ophthalmic Hospital", totalBeds: 300, availableBeds: 45, icuBeds: 5, generalBeds: 280, accommodation: "Basic waiting hall with resting chairs for visually impaired patients' relatives.", facilities: "Advanced Eye Surgeries (Cataract, Retina), Cornea Transplant Center, Glaucoma Clinic.", type: "Specialty Hospital" },
+            ].map(h => ({
+                ...h,
+                address: generateAddress(h.district, h.name, h.type)
+            }));
+            data.push(...detailedBengaluru);
+
+            // 2. Generate the rest of the hospitals (over 1500 total)
+            DISTRICTS.forEach(district => {
+                const isBengaluruUrban = district === "Bengaluru Urban";
+                
+                // Helper to get a random taluk name
+                const getRandomTaluk = () => TALUK_NAMES[Math.floor(Math.random() * TALUK_NAMES.length)];
+                
+                // A. Add 1 major District Hospital (DH) if not B'lore Urban (29 DHs)
+                if (!isBengaluruUrban) {
+                    const type = "District Hospital";
+                    const name = `District General Hospital, ${district}`;
+                    const totalBeds = 350 + Math.floor(Math.random() * 200);
+                    const icuBeds = Math.floor(totalBeds * 0.05) + Math.floor(Math.random() * 5);
+                    const availableBeds = Math.floor(totalBeds * (0.15 + Math.random() * 0.15));
+                    
+                    data.push({
+                        district: district,
+                        name: name,
+                        totalBeds: totalBeds,
+                        availableBeds: availableBeds,
+                        icuBeds: icuBeds,
+                        generalBeds: totalBeds - availableBeds,
+                        accommodation: "Dedicated relative waiting area and basic rest facilities.",
+                        facilities: "Multi-Specialty OPD, Trauma Care, Diagnostics, Blood Storage Unit, X-Ray.",
+                        type: type,
+                        address: generateAddress(district, name, type),
+                    });
+                }
+
+                // B. Add 5 Taluk General Hospitals (TGH) per district (30 districts * 5 = 150 TGHs)
+                for (let i = 0; i < 5; i++) {
+                    const talukName = getRandomTaluk();
+                    const type = "Taluk Hospital";
+                    const name = `Taluk General Hospital, ${talukName}`;
+                    const totalBeds = 120 + Math.floor(Math.random() * 80);
+                    const icuBeds = Math.floor(totalBeds * 0.05);
+                    const availableBeds = Math.floor(totalBeds * (0.2 + Math.random() * 0.3));
+
+                    data.push({
+                        district: district,
+                        name: name,
+                        totalBeds: totalBeds,
+                        availableBeds: availableBeds,
+                        icuBeds: icuBeds,
+                        generalBeds: totalBeds - availableBeds,
+                        accommodation: "Staff can guide to local accommodation/lodging options.",
+                        facilities: "Maternity Services, General Medicine, Minor Surgery, Pharmacy.",
+                        type: type,
+                        address: generateAddress(district, name, type),
+                    });
+                }
+
+                // C. Add 45 Community Health Centers (CHC/PHC) per district (30 districts * 45 = 1350 CHCs)
+                for (let i = 0; i < 45; i++) {
+                    const talukName = getRandomTaluk();
+                    const type = "Primary Care Center";
+                    const name = `CHC/PHC, Rural Unit ${talukName}-${i+1}`;
+                    const totalBeds = 15 + Math.floor(Math.random() * 35); // 15 to 50 beds
+                    const availableBeds = Math.floor(totalBeds * (0.4 + Math.random() * 0.4));
+                    
+                    data.push({
+                        district: district,
+                        name: name,
+                        totalBeds: totalBeds,
+                        availableBeds: availableBeds,
+                        icuBeds: 0,
+                        generalBeds: totalBeds,
+                        accommodation: "Basic seating and water station for waiting.",
+                        facilities: "Primary Health Care, Immunization, First Aid, Outreach Programs.",
+                        type: type,
+                        address: generateAddress(district, name, type),
+                    });
+                }
+            });
+            
+            return data;
+        }
+
+        const hospitalData = generateSimulatedData(); // Execute the data generation
+        
+        // --- 2. DOM UTILITIES & MODAL LOGIC ---
+
+        const hospitalListElement = document.getElementById('hospitalList');
+        const districtFilterElement = document.getElementById('districtFilter');
+        const hospitalCountElement = document.getElementById('hospitalCount');
+        const bookingModal = document.getElementById('bookingModal');
+        const modalHospitalName = document.getElementById('modalHospitalName');
+
+        /**
+         * Opens the booking modal and pre-fills the hospital name.
+         * @param {string} name - The name of the hospital being booked.
+         */
+        function showBookingModal(name) {
+            modalHospitalName.textContent = name;
+            bookingModal.classList.remove('hidden');
+        }
+
+        /**
+         * Closes the booking modal.
+         */
+        function closeBookingModal() {
+            bookingModal.classList.add('hidden');
+            // Reset the form on close
+            document.querySelector('#bookingModal form').reset();
+        }
+
+        /**
+         * Simulates a booking request submission.
+         */
+        function handleBookingRequest(event) {
+            event.preventDefault();
+            
+            const hospital = modalHospitalName.textContent;
+            const patient = document.getElementById('patientName').value;
+            const contact = document.getElementById('contactNumber').value;
+            const service = document.getElementById('requiredService').value;
+
+            console.log(`Booking Request Submitted: Hospital: ${hospital}, Patient: ${patient}, Contact: ${contact}, Service: ${service}`);
+
+            closeBookingModal();
+            showMessage('Request Submitted', `Thank you, ${patient}. Your request for "${service}" at ${hospital} has been registered. A representative will call you on ${contact} shortly.`, 'success');
+        }
+
+
+        /**
+         * Converts hospital data into a string of HTML for display.
+         * @param {Object} hospital - Single hospital data object.
+         * @returns {string} HTML string for the hospital card.
+         */
+        function createHospitalCard(hospital) {
+            // Calculate bed occupancy percentage for visual feedback
+            const occupancy = hospital.totalBeds > 0 ? ((hospital.totalBeds - hospital.availableBeds) / hospital.totalBeds) * 100 : 0;
+            const statusColorClass = occupancy > 85 ? 'bg-red-500' : occupancy > 60 ? 'bg-yellow-500' : 'bg-green-500';
+            const statusTextColorClass = occupancy > 85 ? 'text-red-700' : occupancy > 60 ? 'text-yellow-700' : 'text-green-700';
+
+            // Determine image URL
+            const imageUrl = hospital.imageUrl || `https://placehold.co/400x250/0d47a1/ffffff?text=${hospital.type.replace(/ /g, '+')}`;
+            
+            // Determine type badge color
+            let badgeColor;
+            switch(hospital.type) {
+                case 'Medical College Hospital': badgeColor = 'bg-red-100 text-red-800'; break;
+                case 'Specialty Hospital': badgeColor = 'bg-purple-100 text-purple-800'; break;
+                case 'District Hospital': badgeColor = 'bg-blue-100 text-blue-800'; break;
+                case 'Taluk Hospital': badgeColor = 'bg-indigo-100 text-indigo-800'; break;
+                case 'Primary Care Center': badgeColor = 'bg-green-100 text-green-800'; break;
+                default: badgeColor = 'bg-gray-100 text-gray-800';
+            }
+
+
+            return `
+                <div class="bg-white p-6 rounded-xl card-shadow border-l-8 border-blue-600 flex flex-col h-full">
+                    
+                    <!-- Hospital Image -->
+                    <img src="${imageUrl}" alt="Image of ${hospital.name}" class="rounded-lg mb-4 w-full h-40 object-cover" 
+                         onerror="this.onerror=null; this.src='https://placehold.co/400x250/60a5fa/ffffff?text=Govt+Hospital';">
+
+                    <h3 class="text-xl font-bold text-gray-900 mb-1">${hospital.name}</h3>
+                    <p class="text-xs font-semibold ${badgeColor} inline-block px-2 py-0.5 rounded-full mb-3">${hospital.type}</p>
+                    
+                    <!-- Bed Status Summary -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-center">
+                        <div class="p-3 bg-blue-50 rounded-lg">
+                            <p class="text-xl font-bold text-blue-700">${hospital.totalBeds}</p>
+                            <p class="text-xs text-gray-600 font-medium">Total Beds</p>
+                        </div>
+                        <div class="p-3 ${statusColorClass.replace('bg-', 'bg-').replace('-500', '-100')} rounded-lg">
+                            <p class="text-xl font-bold ${statusTextColorClass}" id="availableCount">${hospital.availableBeds}</p>
+                            <p class="text-xs text-gray-600 font-medium">Available Beds</p>
+                        </div>
+                        <div class="p-3 bg-gray-50 rounded-lg">
+                            <p class="text-lg font-semibold text-gray-800">${hospital.icuBeds}</p>
+                            <p class="text-xs text-gray-600 font-medium">ICU Beds</p>
+                        </div>
+                        <div class="p-3 bg-gray-50 rounded-lg">
+                            <p class="text-lg font-semibold text-gray-800">${hospital.generalBeds}</p>
+                            <p class="text-xs text-gray-600 font-medium">General Beds</p>
+                        </div>
+                    </div>
+
+                    <!-- Location/Address -->
+                    <div class="mt-4 border-t pt-4">
+                        <p class="font-semibold text-gray-800 flex items-center mb-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                            </svg>
+                            Address
+                        </p>
+                        <p class="text-sm text-gray-600 pl-7">${hospital.address}</p>
+                    </div>
+
+                    <!-- Accommodation & Facilities -->
+                    <div class="space-y-3 mt-4 flex-grow">
+                        <div>
+                            <p class="font-semibold text-gray-800 flex items-center mb-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+                                    <path d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2V7a5 5 0 00-5-5zm-5 7.7a2.5 2.5 0 01-1-1.8V7a6 6 0 0112 0v1.9a2.5 2.5 0 01-1 1.8H5z" />
+                                </svg>
+                                Patient/Parent Accommodation
+                            </p>
+                            <p class="text-sm text-gray-600 pl-7">${hospital.accommodation}</p>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-gray-800 flex items-center mb-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-purple-500" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M11.493 5.343a.5.5 0 01.076.124l1.455 3.32a.5.5 0 00.32.32l3.32 1.455a.5.5 0 01.124.076l-1.455 3.32a.5.5 0 00-.32.32l-3.32 1.455a.5.5 0 01-.076.124l-1.455-3.32a.5.5 0 00-.32-.32l-3.32-1.455a.5.5 0 01-.124-.076l1.455-3.32a.5.5 0 00.32-.32l3.32-1.455a.5.5 0 01.124-.076z" clip-rule="evenodd" />
+                                </svg>
+                                Key Facilities
+                            </p>
+                            <p class="text-sm text-gray-600 pl-7">${hospital.facilities}</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Booking Button -->
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <button onclick="showBookingModal('${hospital.name}')" 
+                                class="w-full py-2.5 px-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition duration-150 shadow-md">
+                            Request Booking / Enquire
+                        </button>
+                    </div>
+
+                </div>
+            `;
+        }
+
+        /**
+         * Grouping function to display hospitals organized by district.
+         */
+        function renderGroupedHospitals(hospitals) {
+            const grouped = hospitals.reduce((acc, hospital) => {
+                acc[hospital.district] = acc[hospital.district] || [];
+                acc[hospital.district].push(hospital);
+                return acc;
+            }, {});
+
+            let html = '';
+            // Sort districts alphabetically for cleaner display
+            const sortedDistricts = Object.keys(grouped).sort();
+
+            for (const district of sortedDistricts) {
+                html += `
+                    <div class="py-4 border-b border-gray-300">
+                        <h2 class="text-3xl font-extrabold text-blue-800 mb-6">
+                            ${district} <span class="text-gray-400">(${grouped[district].length} Facilities)</span>
+                        </h2>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                            ${grouped[district].map(createHospitalCard).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            return html;
+        }
+
+
+        // --- 3. MAIN RENDER LOGIC ---
+
+        /**
+         * Filters the data based on the selected district and renders the list.
+         */
+        function renderHospitals() {
+            const selectedDistrict = districtFilterElement.value;
+            
+            // Filter the data
+            const filteredHospitals = selectedDistrict === 'All' 
+                ? hospitalData 
+                : hospitalData.filter(h => h.district === selectedDistrict);
+
+            // Update hospital count
+            hospitalCountElement.textContent = filteredHospitals.length;
+            
+            // Clear previous list
+            hospitalListElement.innerHTML = '';
+            
+            if (filteredHospitals.length === 0) {
+                hospitalListElement.innerHTML = `
+                    <div class="text-center p-12 bg-white rounded-xl text-gray-500">
+                        <p class="mt-3 text-lg font-medium">No hospitals found in this district.</p>
+                        <p class="text-sm">Please select a different district.</p>
+                    </div>
+                `;
+            } else if (selectedDistrict === 'All') {
+                // Render grouped view for "All Districts"
+                hospitalListElement.innerHTML = renderGroupedHospitals(filteredHospitals);
+            } else {
+                // Render simple list for single district
+                hospitalListElement.innerHTML = `
+                    <div class="py-4">
+                        <h2 class="text-3xl font-extrabold text-blue-800 mb-6">
+                            ${selectedDistrict} District <span class="text-gray-400">(${filteredHospitals.length} Facilities)</span>
+                        </h2>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                            ${filteredHospitals.map(createHospitalCard).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        /**
+         * Populates the district filter dropdown with unique districts from the data.
+         */
+        function populateDistrictFilter() {
+            // Get unique districts and sort them alphabetically
+            const districts = [...new Set(hospitalData.map(h => h.district))].sort();
+
+            // Populate dropdown
+            districts.forEach(district => {
+                const option = document.createElement('option');
+                option.value = district;
+                option.textContent = district;
+                districtFilterElement.appendChild(option);
+            });
+        }
+        
+        /**
+         * Displays a temporary notification message to the user (instead of using alert()).
+         * @param {string} title - The main title of the message.
+         * @param {string} subtext - The detailed message body.
+         * @param {string} [type='success'] - The type of message ('success' or 'error').
+         */
+        function showMessage(title, subtext, type = 'success') {
+            const messageBox = document.getElementById('messageBox');
+            const messageText = document.getElementById('messageText');
+            const messageSubText = document.getElementById('messageSubText');
+            const messageIcon = document.getElementById('messageIcon');
+
+            messageText.textContent = title;
+            messageSubText.textContent = subtext;
+
+            // Reset classes
+            messageBox.classList.remove('border-red-500', 'border-green-500', 'hidden', 'opacity-0'); 
+            messageIcon.classList.remove('text-red-500', 'text-green-500');
+            messageIcon.innerHTML = ''; // Clear previous icon
+
+            if (type === 'success') {
+                messageBox.classList.add('border-green-500');
+                messageIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />';
+                messageIcon.classList.add('text-green-500');
+            } else { // error
+                messageBox.classList.add('border-red-500');
+                messageIcon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />';
+                messageIcon.classList.add('text-red-500');
+            }
+            
+            // Show the message box
+            messageBox.classList.remove('opacity-0');
+            
+            // Hide the message after 6 seconds
+            setTimeout(() => { 
+                messageBox.classList.add('opacity-0');
+                setTimeout(() => messageBox.classList.add('hidden'), 300); // Wait for transition
+            }, 6000);
+        }
+
+
+        // --- 4. INITIALIZATION ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. Populate the filter dropdown
+            populateDistrictFilter();
+            
+            // 2. Initial render (defaults to "All Districts")
+            renderHospitals(); 
+        });
+
+    </script>
+</body>
+</html>
